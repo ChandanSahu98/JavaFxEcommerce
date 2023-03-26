@@ -7,10 +7,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
@@ -25,6 +22,9 @@ public class HelloApplication extends Application {
 
     private VBox bodyPane;
     private VBox product;
+    ProductList products = new ProductList();
+
+    Customer loggedInCustomer;
 
     private GridPane loginPage(){
         Text userNameText = new Text("User Name");
@@ -54,19 +54,24 @@ public class HelloApplication extends Application {
                 String username = userName.getText();
                 String password = passwordField.getText();
                 try {
-                    if(Login.customerLogin(username, password)){
+                    loggedInCustomer = Login.customerLogin(username, password);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+                try {
+                    if(loggedInCustomer != null){
                         //login success
                         loginMessage.setText("Login Successful");
                         bodyPane.getChildren().clear();
-                        product = productPageDemo();
+                        product = products.getAllProducts();
                         bodyPane.getChildren().add(product);
                     }
                     else{
                         //login failed
                         loginMessage.setText("Login failed");
                     }
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
         });
@@ -96,9 +101,39 @@ public class HelloApplication extends Application {
         footerBar.setPadding(new Insets(5));
         footerBar.setAlignment(Pos.CENTER);
         footerBar.getChildren().addAll(buyNowButton, addToCart);
+
+        buyNowButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                Product product1 = products.getSelectedProduct();
+                int result = 0;
+                if(loggedInCustomer == null){
+                    showDialog("You need to be logged in first!");
+                    return;
+                }
+                if(product1 == null){
+                    showDialog("Please select a product first!");
+                }
+                result = Order.placeSingleOder(product1, loggedInCustomer);
+
+                if(result >= 1){
+                    showDialog("Order Placed Successfully!");
+                }
+                else{
+                    showDialog("Order Failed!");
+                }
+            }
+        });
         return footerBar;
     }
 
+    private void showDialog(String message){
+        Alert dialog = new Alert(Alert.AlertType.INFORMATION);
+        dialog.setTitle("Message");
+        dialog.setContentText(message);
+        dialog.setHeaderText(null);
+        dialog.showAndWait();
+    }
     private VBox productPageDemo(){
         Text text = new Text("I am product page");
         text.setFont(Font.font("verdana", FontWeight.BOLD, FontPosture.REGULAR, 50));

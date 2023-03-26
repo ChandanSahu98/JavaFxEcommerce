@@ -31,6 +31,16 @@ public class DbConnection {
         }
         return null;
     }
+    public int updateInsertDB(String query){
+        Statement statement = getStatement();
+        try{
+            return statement.executeUpdate(query);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+        return 0;
+    }
 
     public static void main(String[] args) {
         DbConnection dbConnection = new DbConnection();

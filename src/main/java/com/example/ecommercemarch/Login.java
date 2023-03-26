@@ -5,7 +5,7 @@ import java.sql.SQLException;
 
 public class Login {
 
-    public static boolean customerLogin(String userName, String password) throws SQLException {
+    public static Customer customerLogin(String userName, String password) throws SQLException {
         //create a query.
         String query = "Select * from customer where email = '"+userName+"' And password = '"+password+"' ";
         DbConnection dbConnection = new DbConnection();
@@ -14,13 +14,14 @@ public class Login {
             try {
 //                if (rs.getString("name").equals("Angad")) return true;
 //                return false;
-                return true;
+                return new Customer(rs.getInt("id"), rs.getString("name"), rs.getString("name"), null, null);
+
             }
             catch (Exception e){
                 e.printStackTrace();
             }
         }
-        return false;
+        return null;
     }
 
     public static void main(String[] args) throws SQLException {
