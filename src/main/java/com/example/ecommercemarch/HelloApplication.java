@@ -1,9 +1,10 @@
 package com.example.ecommercemarch;
 
 import javafx.application.Application;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -21,10 +22,16 @@ import java.sql.SQLException;
 public class HelloApplication extends Application {
 
     private VBox bodyPane;
-    private VBox product;
-    ProductList products = new ProductList();
-
+    private VBox productPage;
+    HBox footerBar;
+    HBox headerBar;
+    private GridPane loginPage;
+    ProductList productList = new ProductList();
     Customer loggedInCustomer;
+    Button signInButton;
+    Label welcomeLabel;
+
+    ObservableList<Product> itemsInCart = FXCollections.observableArrayList();
 
     private GridPane loginPage(){
         Text userNameText = new Text("User Name");
@@ -33,6 +40,7 @@ public class HelloApplication extends Application {
         TextField userName = new TextField();
         PasswordField passwordField = new PasswordField();
         Button loginButton = new Button("Login");
+
         Label loginMessage = new Label();
 
         GridPane gridPane = new GridPane();
@@ -63,8 +71,13 @@ public class HelloApplication extends Application {
                         //login success
                         loginMessage.setText("Login Successful");
                         bodyPane.getChildren().clear();
-                        product = products.getAllProducts();
-                        bodyPane.getChildren().add(product);
+                        productPage = productList.getAllProducts();
+                        bodyPane.getChildren().add(productPage);
+
+                        //put a welcome message
+                        welcomeLabel.setText("Welcome " + loggedInCustomer.getName());
+                        headerBar.getChildren().add(welcomeLabel);
+                        footerBar.setVisible(true);
                     }
                     else{
                         //login failed
@@ -76,7 +89,6 @@ public class HelloApplication extends Application {
             }
         });
 
-
         return gridPane;
     }
 
@@ -84,10 +96,45 @@ public class HelloApplication extends Application {
         TextField searchText = new TextField();
         Button searchButton = new Button("search");
         searchText.setPrefWidth(160);
+        signInButton = new Button("Sign In");
+        welcomeLabel = new Label("");
+        Button cartButton = new Button("Cart");
+
         HBox headerBar = new HBox(20);
         headerBar.setPadding(new Insets(5));
         headerBar.setAlignment(Pos.CENTER);
-        headerBar.getChildren().addAll(searchText, searchButton);
+        headerBar.getChildren().addAll(searchText, searchButton, signInButton, cartButton);
+
+        searchButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                String search = searchText.getText();
+                bodyPane.getChildren().clear();
+                bodyPane.getChildren().add(productList.getProductsByName(search));
+            }
+        });
+
+        signInButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                bodyPane.getChildren().clear();
+                bodyPane.getChildren().add(loginPage);
+                headerBar.getChildren().remove(signInButton);
+            }
+        });
+
+        cartButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                if(loggedInCustomer == null){
+                    showDialog("Please login to see cart items.");
+                    return;
+                }
+                bodyPane.getChildren().clear();
+                bodyPane.getChildren().add(productList.showProductsInCart(itemsInCart));
+            }
+        });
+
         return headerBar;
     }
 
@@ -95,17 +142,18 @@ public class HelloApplication extends Application {
         TextField searchText = new TextField();
         Button buyNowButton = new Button("Buy Now");
         Button addToCart = new Button("Add To Cart");
+        Button placeOrderButton = new Button("Place Order");
 
         searchText.setPrefWidth(160);
         HBox footerBar = new HBox(20);
         footerBar.setPadding(new Insets(5));
         footerBar.setAlignment(Pos.CENTER);
-        footerBar.getChildren().addAll(buyNowButton, addToCart);
+        footerBar.getChildren().addAll(buyNowButton, addToCart, placeOrderButton);
 
         buyNowButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
-                Product product1 = products.getSelectedProduct();
+                Product product1 = productList.getSelectedProduct();
                 int result = 0;
                 if(loggedInCustomer == null){
                     showDialog("You need to be logged in first!");
@@ -124,6 +172,42 @@ public class HelloApplication extends Application {
                 }
             }
         });
+
+        addToCart.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                if(loggedInCustomer == null){
+                    showDialog("Please login first to add item to cart.");
+                    return;
+                }
+                Product product = productList.getSelectedProduct();
+                if(product == null){
+                    showDialog("Please select a product to add to the cart.");
+                    return;
+                }
+                itemsInCart.add(product);
+                showDialog("Product added to cart successfully.");
+            }
+        });
+
+        placeOrderButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                if(loggedInCustomer == null){
+                    showDialog("Please login first to add item to cart.");
+                    return;
+                }
+
+                if(itemsInCart.size() == 0){
+                    showDialog("Please add items to the cart first to place an order!!");
+                    return;
+                }
+                int count = Order.placeMultipleOrder(itemsInCart, loggedInCustomer);
+                showDialog("Order placed for "+count+" number of products.");
+                itemsInCart.clear();
+            }
+        });
+
         return footerBar;
     }
 
@@ -145,25 +229,33 @@ public class HelloApplication extends Application {
     private BorderPane createContent(){
 
         BorderPane root = new BorderPane();
-        root.setPrefSize(400, 300);
+        root.setPrefSize(800, 600);
 
         //header bar
-        GridPane loginPage = loginPage();
-        HBox headerBar = headerBar();
 
+        headerBar = headerBar();
+        root.setTop(headerBar);
+        BorderPane.setAlignment(headerBar, Pos.CENTER);
+
+        //Body
         bodyPane = new VBox(20);
         bodyPane.setPadding(new Insets(5));
-        bodyPane.getChildren().add(loginPage);
+        root.setCenter(bodyPane);
         bodyPane.setAlignment(Pos.CENTER);
 
-        headerBar.setPadding(new Insets(5));
+        loginPage = loginPage();
 
-        root.setTop(headerBar);
-        root.setCenter(bodyPane);
+        productPage = productList.getAllProducts();
+        bodyPane.getChildren().add(productPage);
+
+
+//        root.setTop(headerBar);
+
 
         //footer bar
-        HBox footerBar = footerBar();
-        root.setBottom(footerBar);
+       footerBar = footerBar();
+       root.setBottom(footerBar);
+       footerBar.setVisible(false);
 
         return root;
     }

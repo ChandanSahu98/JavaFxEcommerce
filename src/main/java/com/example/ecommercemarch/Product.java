@@ -24,9 +24,10 @@ public class Product {
         return getProducts(query);
     }
 
-//    public static ObservableList<Product> getProductByName(String productName){
-//        String query = "Select * From product where name Like '%' '"+productName+"' '%'";
-//    }
+    public static ObservableList<Product> getProductByName(String productName){
+        String query = "Select * from product where name like lower('%" + productName.toLowerCase()+"%')";
+        return getProducts(query);
+    }
 
     public static ObservableList<Product> getProducts(String query){
         ObservableList<Product> data = FXCollections.observableArrayList();
